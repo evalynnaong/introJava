@@ -5,24 +5,25 @@ import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.time.LocalDate;
+import java.util.Comparator;
 
-public class AppointmentDisplayer extends JPanel implements ActionListener {
+public class AppointmentDisplayer extends JFrame implements ActionListener {
     private AppointmentManager manage;
-    private JPanel controls;
     private JList apptDates;
     private DefaultListModel<String> listModel;
-    private JButton add, delete, update;
 
-    public AppointmentDisplayer(AppointmentManager manage) {
-        this.manage = manage;
-        setLayout(new BorderLayout());
-        setPreferredSize(new Dimension(600,250));
-        setBackground(Color.LIGHT_GRAY);
+    private JPanel controls;
+    private JButton filter, showAllButton, nat, desc;
+
+    public AppointmentDisplayer(AppointmentManager manager) {
+        this.manage = manager;
+        setTitle("Appointments");
+        setDefaultCloseOperation(EXIT_ON_CLOSE);
 
         listModel = new DefaultListModel<>();
         apptDates = new JList<>(listModel);
         apptDates.setVisibleRowCount(10);
-        apptDates.setFixedCellWidth(200);
+        apptDates.setFixedCellWidth(250);
         add(new JScrollPane(apptDates), BorderLayout.CENTER);
 
 
@@ -30,18 +31,29 @@ public class AppointmentDisplayer extends JPanel implements ActionListener {
             listModel.addElement(apt.toString());
         }
 
+         controls = new JPanel();
+         filter = new JButton("Filter by Date");
+         showAllButton = new JButton("Show All");
+         nat = new JButton("Disp by Date");
+         desc = new JButton("Disp by Description");
 
-        controls = new JPanel();
-        add = new JButton("add");
-        delete = new JButton("delete");
-        update = new JButton("update");
 
-        controls.add(add);
-        controls.add(delete);
-        controls.add(update);
+         filter.addActionListener(this);
+         showAllButton.addActionListener(this);
 
-        add(controls, "West");
-        setListeners();
+         controls.add(filter);
+         controls.add(showAllButton);
+         controls.add(nat);
+         controls.add(desc);
+
+         add(controls, BorderLayout.NORTH);
+
+        JButton editButton = new JButton("Edit Appointments");
+        editButton.addActionListener(e -> new AppointmentEditor(this, manager));
+        add(editButton, BorderLayout.SOUTH);
+
+        pack();
+        setVisible(true);
     }
 
     public void refreshDisplay() {
@@ -51,113 +63,48 @@ public class AppointmentDisplayer extends JPanel implements ActionListener {
         }
     }
 
-    public void setListeners() {
-        add.addActionListener(this);
-        delete.addActionListener(this);
-        update.addActionListener(this);
+
+    public void refreshDisplay(Appointment[] appointments) {
+        listModel.clear();
+        for(Appointment apt : manage.getAppointments()) {
+            listModel.addElement(apt.toString());
+        }
     }
 
-    @Override
     public void actionPerformed(ActionEvent e) {
         String cmmd = e.getActionCommand();
         try {
             switch(cmmd) {
-                case "add": {
-                    String input1 = JOptionPane.showInputDialog("Enter description (Onetime, Daily, Monthly): ");
-                    LocalDate input2 = LocalDate.parse(JOptionPane.showInputDialog("Enter start date (YYYY-MM-DD): "));
-                    LocalDate input3 = LocalDate.parse(JOptionPane.showInputDialog("Enter end date (same if onetime): "));
-
-                    Appointment addAppt;
-
-                    switch(input1) {
-                        case "Onetime": {
-                            addAppt = new OnetimeAppointment(input1, input2);
-                            manage.add(addAppt);
-                            break;
-                        }
-                        case "Daily": {
-                            addAppt = new DailyAppointment(input1, input2, input3);
-                            manage.add(addAppt);
-                            break;
-                        }
-                        case "Monthly": {
-                            addAppt = new MonthlyAppointment(input1, input2, input3);
-                            manage.add(addAppt);
-                            break;
-                        }
-                    }
-                    refreshDisplay();
+                case "Show All": {
+                    refreshDisplay(manage.getAppointmentsOn(null, null));
                     break;
                 }
-                case "delete": {
-                    String input1 = JOptionPane.showInputDialog("Enter description (Onetime, Daily, Monthly): ");
-                    LocalDate input2 = LocalDate.parse(JOptionPane.showInputDialog("Enter start date (YYYY-MM-DD): "));
-                    LocalDate input3 = LocalDate.parse(JOptionPane.showInputDialog("Enter end date (same if onetime): "));
-
-                    Appointment deleteAppt;
-
-                    switch(input1) {
-                        case "Onetime": {
-                            deleteAppt = new OnetimeAppointment(input1, input2);
-                            manage.delete(deleteAppt);
-                            break;
-                        }
-                        case "Daily": {
-                            deleteAppt = new DailyAppointment(input1, input2, input3);
-                            manage.delete(deleteAppt);
-                            break;
-                        }
-                        case "Monthly": {
-                            deleteAppt = new MonthlyAppointment(input1, input2, input3);
-                            manage.delete(deleteAppt);
-                            break;
-                        }
+                case "Filter by Date": {
+                    try {
+                        LocalDate date = LocalDate.parse(JOptionPane.showInputDialog("Enter start date (YYYY-MM-DD): "));
+                            Appointment[] filtered = manage.getAppointmentsOn(date, null); // natural order
+                            refreshDisplay(filtered);
+                    } catch (Exception ex) {
+                        JOptionPane.showMessageDialog(this, "Invalid date format. Use yyyy-mm-dd.");
                     }
-                    refreshDisplay();
                     break;
                 }
-                case "update": {
-                    String input1 = JOptionPane.showInputDialog("Enter description of date to update(Onetime, Daily, Monthly): ");
-                    LocalDate input2 = LocalDate.parse(JOptionPane.showInputDialog("Enter start date (YYYY-MM-DD): "));
-                    LocalDate input3 = LocalDate.parse(JOptionPane.showInputDialog("Enter end date (same if onetime): "));
-
-                    String input4 = JOptionPane.showInputDialog("Enter description of new date(Onetime, Daily, Monthly): ");
-                    LocalDate input5 = LocalDate.parse(JOptionPane.showInputDialog("Enter start date (YYYY-MM-DD): "));
-                    LocalDate input6 = LocalDate.parse(JOptionPane.showInputDialog("Enter end date (same if onetime): "));
-
-                    Appointment old;
-                    Appointment newAppt;
-
-                    switch(input1) {
-                        case "Onetime": {
-                            old = new OnetimeAppointment(input1, input2);
-                            newAppt = new OnetimeAppointment(input4, input5);
-                            manage.update(old, newAppt);
-                            break;
-                        }
-                        case "Daily": {
-                            old = new DailyAppointment(input1, input2, input3);
-                            newAppt = new DailyAppointment(input4, input5, input6);
-                            manage.update(old, newAppt);
-                            break;
-                        }
-                        case "Monthly": {
-                            old = new MonthlyAppointment(input1, input2, input3);
-                            newAppt = new MonthlyAppointment(input4, input5, input6);
-                            manage.update(old, newAppt);
-                            break;
-                        }
-                    }
-                    refreshDisplay();
+                case "Disp by Date": {
+                    Comparator<Appointment> byDate = Comparator.comparing(Appointment::getStartDate);
+                    refreshDisplay(manage.getAppointmentsOn(null, byDate));
                     break;
                 }
-            }
+                case "Disp by Description": {
+                    Comparator<Appointment> byDescription = Comparator.comparing(Appointment::getDescription);
+                    refreshDisplay(manage.getAppointmentsOn(null, byDescription));
+                    break;
+                }
 
+                }
         } catch (Exception ex) {
             System.out.println(ex);
         }
     }
-
 
     public static void main(String[] args) {
         AppointmentManager manage = new AppointmentManager();
@@ -168,7 +115,6 @@ public class AppointmentDisplayer extends JPanel implements ActionListener {
         frame.getContentPane().add(gui);
         frame.pack();
         frame.setVisible(true);
-
 
     }
 
